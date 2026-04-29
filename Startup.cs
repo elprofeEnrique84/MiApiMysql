@@ -10,6 +10,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
+using MIAPIMYSQL.Data;
+using MIAPIMYSQL.Services;
 
 namespace MiApiMysql
 {
@@ -26,6 +29,29 @@ namespace MiApiMysql
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+            
+            // Registrar DbContext
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseMySql(
+                    Configuration.GetConnectionString("DefaultConnection"),
+                    new MySqlServerVersion(new Version(5, 7, 0))
+                )
+            );
+            
+            // Registrar servicios
+            services.AddScoped<IProductoService, ProductoService>();
+            
+            // Agregar Swagger
+            services.AddSwaggerGen();
+            
+            // CORS
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", builder =>
+                    builder.AllowAnyOrigin()
+                           .AllowAnyMethod()
+                           .AllowAnyHeader());
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -34,11 +60,15 @@ namespace MiApiMysql
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
+                app.UseSwagger();
+                app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "MiApiMysql v1"));
             }
 
             app.UseHttpsRedirection();
 
             app.UseRouting();
+
+            app.UseCors("AllowAll");
 
             app.UseAuthorization();
 
